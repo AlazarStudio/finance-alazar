@@ -44,8 +44,17 @@ function generateToken() {
 function loadAuth() {
   try {
     if (existsSync(AUTH_FILE)) {
-      const data = readFileSync(AUTH_FILE, "utf-8");
-      return JSON.parse(data);
+      const data = JSON.parse(readFileSync(AUTH_FILE, "utf-8"));
+      
+      // Проверяем, что passwordHash является хешем (число в строке), а не паролем
+      // Если passwordHash равен паролю "admin", пересоздаем с правильным хешем
+      if (data.passwordHash === "admin" || data.passwordHash === data.username) {
+        console.warn("⚠️  Password hash is invalid, regenerating...");
+        data.passwordHash = simpleHash("admin");
+        saveAuth(data);
+      }
+      
+      return data;
     }
   } catch (error) {
     console.error("Error loading auth:", error);
@@ -57,6 +66,7 @@ function loadAuth() {
     passwordHash: simpleHash("admin"),
   };
   saveAuth(defaultAuth);
+  console.log("Created default auth file with username: admin, password: admin");
   return defaultAuth;
 }
 
@@ -513,16 +523,27 @@ app.put("/api/app-settings", requireAuth, (req, res) => {
 app.post("/api/auth/login", (req, res) => {
   try {
     const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
+    
     const auth = loadAuth();
-
-    if (username === auth.username && simpleHash(password) === auth.passwordHash) {
+    const passwordHash = simpleHash(password);
+    
+    console.log(`Login attempt: username=${username}, passwordHash=${passwordHash}, expectedHash=${auth.passwordHash}`);
+    
+    if (username === auth.username && passwordHash === auth.passwordHash) {
       const token = generateToken();
       activeTokens.add(token);
+      console.log(`Login successful for user: ${username}`);
       res.json({ token, username: auth.username });
     } else {
+      console.log(`Login failed: Invalid credentials for user: ${username}`);
       res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (error) {
+    console.error("Login error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -581,7 +602,7 @@ try {
     const httpsServer = https.createServer(httpsOptions, app);
     
     httpsServer.listen(PORT, () => {
-      console.log(`HTTPS Server is running on https://0.0.0.0:${PORT}`);
+      console.log(`HTTPS Server is running on https://backendfinance.demoalazar.ru:${PORT}`);
       console.log(`SSL certificates loaded from: ${SSL_DIR}`);
     });
   } else {
