@@ -50,7 +50,7 @@ function loadAuth() {
       // Если passwordHash равен паролю "admin", пересоздаем с правильным хешем
       if (data.passwordHash === "admin" || data.passwordHash === data.username) {
         console.warn("⚠️  Password hash is invalid, regenerating...");
-        data.passwordHash = simpleHash("admin");
+        data.passwordHash = simpleHash("6Rm%HLz4");
         saveAuth(data);
       }
       
@@ -63,10 +63,10 @@ function loadAuth() {
   // По умолчанию: admin / admin
   const defaultAuth = {
     username: "admin",
-    passwordHash: simpleHash("admin"),
+    passwordHash: simpleHash("6Rm%HLz4"),
   };
   saveAuth(defaultAuth);
-  console.log("Created default auth file with username: admin, password: admin");
+  console.log("Created default auth file with username: admin");
   return defaultAuth;
 }
 
