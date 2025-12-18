@@ -84,6 +84,46 @@ function saveAuth(auth) {
 
 // Хранилище активных токенов (в продакшене лучше использовать Redis)
 const activeTokens = new Set();
+const TOKENS_FILE = join(DATA_DIR, "tokens.json");
+
+// Инициализация данных
+function initDataDir() {
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+// Загрузка токенов из файла при старте сервера
+function loadTokens() {
+  try {
+    initDataDir(); // Убеждаемся, что директория существует
+    if (existsSync(TOKENS_FILE)) {
+      const tokensData = JSON.parse(readFileSync(TOKENS_FILE, "utf-8"));
+      tokensData.tokens.forEach(token => activeTokens.add(token));
+      console.log(`Loaded ${activeTokens.size} tokens from file`);
+    } else {
+      console.log(`No tokens file found, starting with empty token set`);
+    }
+  } catch (error) {
+    console.error("Error loading tokens:", error);
+  }
+}
+
+// Сохранение токенов в файл
+function saveTokens() {
+  try {
+    initDataDir();
+    const tokensData = { tokens: Array.from(activeTokens) };
+    writeFileSync(TOKENS_FILE, JSON.stringify(tokensData, null, 2), "utf-8");
+    console.log(`Saved ${activeTokens.size} tokens to file`);
+  } catch (error) {
+    console.error("Error saving tokens:", error);
+  }
+}
+
+// Загружаем токены при старте
+initDataDir();
+loadTokens();
 
 // Middleware для проверки авторизации
 function requireAuth(req, res, next) {
@@ -111,6 +151,22 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// Обработка OPTIONS запросов (preflight CORS)
+app.options('*', (req, res) => {
+  console.log(`[OPTIONS] ${req.path}`);
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
+// Middleware для логирования всех запросов
+app.use((req, res, next) => {
+  console.log(`\n[REQUEST] ${req.method} ${req.path}`);
+  console.log(`[REQUEST] Authorization:`, req.headers.authorization || 'missing');
+  next();
+});
+
 // Middleware
 app.use(cors({
   origin: true, // Разрешаем все источники
@@ -123,13 +179,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Инициализация авторизации
 loadAuth();
-
-// Инициализация данных
-function initDataDir() {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
 
 function loadData() {
   try {
@@ -555,6 +604,7 @@ app.post("/api/auth/login", (req, res) => {
     if (username === auth.username && passwordHash === auth.passwordHash) {
       const token = generateToken();
       activeTokens.add(token);
+      saveTokens(); // Сохраняем токены в файл
       console.log(`Login successful for user: ${username}`);
       console.log(`Token generated: ${token.substring(0, 30)}...`);
       console.log(`Total active tokens: ${activeTokens.size}`);
@@ -594,6 +644,7 @@ app.post("/api/auth/logout", (req, res) => {
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
       activeTokens.delete(token);
+      saveTokens(); // Сохраняем изменения токенов
     }
     res.json({ success: true });
   } catch (error) {
