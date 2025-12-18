@@ -66,7 +66,6 @@ function loadAuth() {
     passwordHash: simpleHash("6Rm%HLz4"),
   };
   saveAuth(defaultAuth);
-  console.log("Created default auth file with username: admin");
   return defaultAuth;
 }
 
@@ -100,9 +99,7 @@ function loadTokens() {
     if (existsSync(TOKENS_FILE)) {
       const tokensData = JSON.parse(readFileSync(TOKENS_FILE, "utf-8"));
       tokensData.tokens.forEach(token => activeTokens.add(token));
-      console.log(`Loaded ${activeTokens.size} tokens from file`);
     } else {
-      console.log(`No tokens file found, starting with empty token set`);
     }
   } catch (error) {
     console.error("Error loading tokens:", error);
@@ -115,11 +112,9 @@ function saveTokens() {
     initDataDir();
     const tokensData = { tokens: Array.from(activeTokens) };
     writeFileSync(TOKENS_FILE, JSON.stringify(tokensData, null, 2), "utf-8");
-    console.log(`[saveTokens] Saved ${activeTokens.size} tokens to file`);
     // Проверяем, что токены действительно сохранены
     if (existsSync(TOKENS_FILE)) {
       const savedData = JSON.parse(readFileSync(TOKENS_FILE, "utf-8"));
-      console.log(`[saveTokens] Verified: ${savedData.tokens.length} tokens in file`);
     }
   } catch (error) {
     console.error("[saveTokens] Error saving tokens:", error);
@@ -134,33 +129,22 @@ loadTokens();
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   
-  console.log(`\n[requireAuth] ${req.method} ${req.path} at ${new Date().toISOString()}`);
-  console.log(`[requireAuth] Authorization header: ${authHeader ? 'present' : 'missing'}`);
-  console.log(`[requireAuth] Active tokens count: ${activeTokens.size}`);
   
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.log(`[requireAuth] Missing or invalid Authorization header`);
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   const token = authHeader.substring(7);
-  console.log(`[requireAuth] Token: ${token.substring(0, 20)}...`);
-  console.log(`[requireAuth] Token exists in Set: ${activeTokens.has(token)}`);
   
   if (!activeTokens.has(token)) {
-    console.log(`[requireAuth] ❌ Token not found in active tokens`);
-    console.log(`[requireAuth] Available tokens (first 3):`, Array.from(activeTokens).slice(0, 3).map(t => t.substring(0, 20) + '...'));
     
     // Проверяем, может быть токен в файле, но не загружен в память
     try {
       if (existsSync(TOKENS_FILE)) {
         const fileData = JSON.parse(readFileSync(TOKENS_FILE, "utf-8"));
         const tokenInFile = fileData.tokens.includes(token);
-        console.log(`[requireAuth] Token in file: ${tokenInFile}`);
         if (tokenInFile && !activeTokens.has(token)) {
-          console.log(`[requireAuth] ⚠️ Token found in file but not in memory! Reloading...`);
           activeTokens.add(token);
-          console.log(`[requireAuth] Token reloaded, retrying validation...`);
         }
       }
     } catch (error) {
@@ -173,13 +157,11 @@ function requireAuth(req, res, next) {
     }
   }
 
-  console.log(`[requireAuth] ✅ Token validated successfully`);
   next();
 }
 
 // Обработка OPTIONS запросов (preflight CORS)
 app.options('*', (req, res) => {
-  console.log(`[OPTIONS] ${req.path}`);
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -188,8 +170,6 @@ app.options('*', (req, res) => {
 
 // Middleware для логирования всех запросов
 app.use((req, res, next) => {
-  console.log(`\n[REQUEST] ${req.method} ${req.path}`);
-  console.log(`[REQUEST] Authorization:`, req.headers.authorization || 'missing');
   next();
 });
 
@@ -259,9 +239,7 @@ function generateId() {
 // Получить все данные
 app.get("/api/data", requireAuth, (req, res) => {
   try {
-    console.log(`[GET /api/data] Loading data...`);
     const data = loadData();
-    console.log(`[GET /api/data] Data loaded successfully, clients: ${data.clients?.length || 0}, employees: ${data.employees?.length || 0}`);
     res.json(data);
   } catch (error) {
     console.error(`[GET /api/data] Error:`, error);
@@ -625,23 +603,15 @@ app.post("/api/auth/login", (req, res) => {
     const auth = loadAuth();
     const passwordHash = simpleHash(password);
     
-    console.log(`Login attempt: username=${username}, passwordHash=${passwordHash}, expectedHash=${auth.passwordHash}`);
-    
     if (username === auth.username && passwordHash === auth.passwordHash) {
       const token = generateToken();
       activeTokens.add(token);
       saveTokens(); // Сохраняем токены в файл
-      console.log(`Login successful for user: ${username}`);
-      console.log(`Token generated: ${token.substring(0, 30)}...`);
-      console.log(`Total active tokens: ${activeTokens.size}`);
-      console.log(`Token added to activeTokens: ${activeTokens.has(token)}`);
       
       // Убеждаемся, что токен точно сохранен перед отправкой ответа
       const response = { token, username: auth.username };
-      console.log(`Sending login response with token`);
       res.json(response);
     } else {
-      console.log(`Login failed: Invalid credentials for user: ${username}`);
       res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (error) {
@@ -653,14 +623,10 @@ app.post("/api/auth/login", (req, res) => {
 app.post("/api/auth/verify", (req, res) => {
   try {
     const { token } = req.body;
-    console.log(`[verify] Token verification request: ${token ? token.substring(0, 30) + '...' : 'missing'}`);
-    console.log(`[verify] Active tokens count: ${activeTokens.size}`);
     
     if (activeTokens.has(token)) {
-      console.log(`[verify] Token is valid`);
       res.json({ valid: true });
     } else {
-      console.log(`[verify] Token is invalid or expired`);
       res.status(401).json({ valid: false });
     }
   } catch (error) {
@@ -711,8 +677,6 @@ try {
     const httpsServer = https.createServer(httpsOptions, app);
     
     httpsServer.listen(PORT, () => {
-      console.log(`HTTPS Server is running on https://backendfinance.demoalazar.ru:${PORT}`);
-      console.log(`SSL certificates loaded from: ${SSL_DIR}`);
     });
   } else {
     // Если сертификатов нет, запускаем HTTP (для разработки)
