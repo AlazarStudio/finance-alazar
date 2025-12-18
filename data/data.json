@@ -1,0 +1,256 @@
+{
+  "clients": [
+    {
+      "id": "274c9ef2-6bb0-4c6d-869e-157f884361e7",
+      "name": "МинТур КЧР",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "98843de5-57c1-400f-8864-4f9ed775d554",
+      "name": "Минэк КЧР",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "c9ea3e3b-bcf0-4e14-9dfc-7b50fc819d1d",
+      "name": "АНО \"КЧ Туризм\"",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "fc0e2d26-60a9-4d91-9b8d-ea657944b41d",
+      "name": "АНО \"Мой бизнес\" КЧР",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "7673181d-3aa8-41b4-9f7f-9982b38c9853",
+      "name": "Хицунов",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "34e868e8-4566-4553-9deb-40a3004ea11f",
+      "name": "АНО \"Моя карьера\"",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "01b5adfa-0063-4b3e-9435-73e1376fbb6f",
+      "name": "Bison Event",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "fa50a48a-1a71-49ed-9982-4f421d8c87bb",
+      "name": "КарсТуристик",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "d8dfc570-50cf-4d28-a8e7-551d3f67f74a",
+      "name": "КарсАвиа",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "4f2f4485-ba2c-4d9f-8e67-4b800034f885",
+      "name": "AVAR",
+      "company": "AVAR",
+      "contact": "Шамиль",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "e8885f9b-bc6d-4f42-bfed-97db606ee028",
+      "name": "Турвита",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "2ee26e47-6966-4939-8c26-817c4b08d108",
+      "name": "АНО \"Новые перспективы\"",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "a1947aae-0eeb-4623-9020-4d2923a5ee8d",
+      "name": "ТПП КЧР",
+      "company": "",
+      "contact": "",
+      "phone": "",
+      "email": ""
+    }
+  ],
+  "employees": [
+    {
+      "id": "753ba2b9-16b3-4e80-8f7f-88976e3a8ce0",
+      "fullName": "Азамат",
+      "position": "Art-директор",
+      "percent": 20
+    },
+    {
+      "id": "3c138872-09da-41af-93af-5521a7d7360c",
+      "fullName": "Алим",
+      "position": "Директор по програмной разработке",
+      "percent": 20
+    },
+    {
+      "id": "430c0faa-61ad-4dc9-b91e-2e2f6f51230d",
+      "fullName": "Вика",
+      "position": "Графический дизайнер",
+      "percent": 20
+    },
+    {
+      "id": "e6d25407-eef1-4e81-b684-de6aee746efb",
+      "fullName": "Халю",
+      "position": "Графический дизайнер",
+      "percent": 20
+    },
+    {
+      "id": "d708627a-44b1-4124-8e93-5e896ff196e5",
+      "fullName": "Амина",
+      "position": "UX/UI дизайнер",
+      "percent": 20
+    },
+    {
+      "id": "cf15c352-a184-4ce3-ad02-4490de34fe9d",
+      "fullName": "Муса",
+      "position": "Frontend-разработчик",
+      "percent": 20
+    },
+    {
+      "id": "d845dfe9-c260-4ac4-814c-ebe883cbc445",
+      "fullName": "Руслан",
+      "position": "Backend-разработчик",
+      "percent": 20
+    },
+    {
+      "id": "a484700f-c77d-4272-8e92-98f580faf2ec",
+      "fullName": "Адамей",
+      "position": "Веб-разработчик",
+      "percent": 20
+    },
+    {
+      "id": "b7f7776b-4f3f-4b98-bcdd-0190b1835dc8",
+      "fullName": "Ксения",
+      "position": "SMM",
+      "percent": 20
+    },
+    {
+      "id": "da6417f4-cf72-4523-8c14-c09315bec358",
+      "fullName": "Мухаммад",
+      "position": "Менеджер",
+      "percent": 20
+    }
+  ],
+  "expenseCategories": [],
+  "fixedExpenses": [
+    {
+      "id": "52948ae6-92d6-4e89-b32f-2c2df4bc6382",
+      "name": "Офис",
+      "amount": 50000,
+      "period": ""
+    },
+    {
+      "id": "03c7cdd6-929e-449a-aa86-acd52d848964",
+      "name": "Коммунальные",
+      "amount": 15000,
+      "period": ""
+    },
+    {
+      "id": "e752dfb7-9b09-4a70-8597-e8eb74b8037e",
+      "name": "Клининг",
+      "amount": 15200,
+      "period": ""
+    },
+    {
+      "id": "347c36d0-00c2-4332-8603-7e4fd4b0902f",
+      "name": "VPN сервера",
+      "amount": 2000,
+      "period": ""
+    },
+    {
+      "id": "199c4d60-5944-4236-8314-8405336476a2",
+      "name": "Хостинг Beget",
+      "amount": 1500,
+      "period": ""
+    },
+    {
+      "id": "d0222ad0-698d-467d-8bd1-0aa00f8cdd54",
+      "name": "ТочкаБанк",
+      "amount": 7500,
+      "period": ""
+    },
+    {
+      "id": "2537f0d4-6d71-4f2f-94ba-0e974bdd3ee8",
+      "name": "Подписка Midjourney",
+      "amount": 4500,
+      "period": ""
+    },
+    {
+      "id": "f5dc6453-d62c-45c9-aeb2-b2803257a0c9",
+      "name": "Подписка ChatGPT",
+      "amount": 7500,
+      "period": ""
+    },
+    {
+      "id": "1a0691fd-89a9-4bf4-a0b1-61b6ba27d3ae",
+      "name": "Мегафон",
+      "amount": 1500,
+      "period": ""
+    },
+    {
+      "id": "842382c3-39d0-4377-9bde-45d53a3593a3",
+      "name": "Ростелеком",
+      "amount": 1200,
+      "period": ""
+    },
+    {
+      "id": "2eda2cd7-bceb-41db-8939-46a8557d4b82",
+      "name": "Продукты и материалы",
+      "amount": 15000,
+      "period": ""
+    }
+  ],
+  "variableExpenses": [],
+  "incomes": [],
+  "organization": {
+    "name": "",
+    "inn": "",
+    "address": "",
+    "phone": "",
+    "email": "",
+    "website": ""
+  },
+  "appSettings": {
+    "currency": "₽",
+    "dateFormat": "DD.MM.YYYY",
+    "language": "ru",
+    "taxPercent": 7,
+    "theme": "dark"
+  }
+}

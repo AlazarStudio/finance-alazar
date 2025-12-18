@@ -1,0 +1,560 @@
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const app = express();
+const PORT = 3000;
+const DATA_DIR = join(__dirname, "data");
+const DATA_FILE = join(DATA_DIR, "data.json");
+const AUTH_FILE = join(DATA_DIR, "auth.json");
+
+// Простая функция для хеширования пароля (для продакшена лучше использовать bcrypt)
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString();
+}
+
+// Генерация токена
+function generateToken() {
+  return Math.random().toString(36).substring(2, 15) + 
+         Math.random().toString(36).substring(2, 15) + 
+         Date.now().toString(36);
+}
+
+// Загрузка данных авторизации
+function loadAuth() {
+  try {
+    if (existsSync(AUTH_FILE)) {
+      const data = readFileSync(AUTH_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error loading auth:", error);
+  }
+  
+  // По умолчанию: admin / admin
+  const defaultAuth = {
+    username: "admin",
+    passwordHash: simpleHash("admin"),
+  };
+  saveAuth(defaultAuth);
+  return defaultAuth;
+}
+
+// Сохранение данных авторизации
+function saveAuth(auth) {
+  try {
+    initDataDir();
+    writeFileSync(AUTH_FILE, JSON.stringify(auth, null, 2), "utf-8");
+    return true;
+  } catch (error) {
+    console.error("Error saving auth:", error);
+    return false;
+  }
+}
+
+// Хранилище активных токенов (в продакшене лучше использовать Redis)
+const activeTokens = new Set();
+
+// Middleware для проверки авторизации
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const token = authHeader.substring(7);
+  if (!activeTokens.has(token)) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  next();
+}
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Инициализация авторизации
+loadAuth();
+
+// Инициализация данных
+function initDataDir() {
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function loadData() {
+  try {
+    if (existsSync(DATA_FILE)) {
+      const data = readFileSync(DATA_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error loading data:", error);
+  }
+  
+  return {
+    clients: [],
+    employees: [],
+    expenseCategories: [],
+    fixedExpenses: [],
+    variableExpenses: [],
+    incomes: [],
+    organization: {
+      name: "",
+      inn: "",
+      address: "",
+      phone: "",
+      email: "",
+      website: "",
+    },
+    appSettings: {
+      currency: "₽",
+      dateFormat: "DD.MM.YYYY",
+      language: "ru",
+      taxPercent: "",
+      theme: "light",
+    },
+  };
+}
+
+function saveData(data) {
+  try {
+    initDataDir();
+    writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+    return true;
+  } catch (error) {
+    console.error("Error saving data:", error);
+    return false;
+  }
+}
+
+function generateId() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+// Получить все данные
+app.get("/api/data", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Обновить все данные
+app.put("/api/data", requireAuth, (req, res) => {
+  try {
+    const data = req.body;
+    if (saveData(data)) {
+      res.json({ success: true });
+    } else {
+      res.status(500).json({ error: "Failed to save data" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clients
+app.get("/api/clients", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.clients || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/clients", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const client = { ...req.body, id: generateId() };
+    data.clients.push(client);
+    saveData(data);
+    res.json(client);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/clients/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const index = data.clients.findIndex((c) => c.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+    data.clients[index] = { ...data.clients[index], ...req.body };
+    saveData(data);
+    res.json(data.clients[index]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/clients/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.clients = data.clients.filter((c) => c.id !== req.params.id);
+    saveData(data);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Employees
+app.get("/api/employees", (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.employees || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/employees", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const employee = { ...req.body, id: generateId() };
+    data.employees.push(employee);
+    saveData(data);
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/employees/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const index = data.employees.findIndex((e) => e.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+    data.employees[index] = { ...data.employees[index], ...req.body };
+    saveData(data);
+    res.json(data.employees[index]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/employees/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.employees = data.employees.filter((e) => e.id !== req.params.id);
+    saveData(data);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Incomes
+app.get("/api/incomes", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.incomes || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/incomes", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const income = { ...req.body, id: generateId() };
+    data.incomes.push(income);
+    saveData(data);
+    res.json(income);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/incomes/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const index = data.incomes.findIndex((i) => i.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "Income not found" });
+    }
+    data.incomes[index] = { ...data.incomes[index], ...req.body };
+    saveData(data);
+    res.json(data.incomes[index]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/incomes/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.incomes = data.incomes.filter((i) => i.id !== req.params.id);
+    saveData(data);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fixed Expenses
+app.get("/api/fixed-expenses", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.fixedExpenses || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/fixed-expenses", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const expense = { ...req.body, id: generateId() };
+    data.fixedExpenses.push(expense);
+    saveData(data);
+    res.json(expense);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/fixed-expenses/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const index = data.fixedExpenses.findIndex((e) => e.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+    data.fixedExpenses[index] = { ...data.fixedExpenses[index], ...req.body };
+    saveData(data);
+    res.json(data.fixedExpenses[index]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/fixed-expenses/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.fixedExpenses = data.fixedExpenses.filter((e) => e.id !== req.params.id);
+    saveData(data);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Variable Expenses
+app.get("/api/variable-expenses", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.variableExpenses || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/variable-expenses", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const expense = { ...req.body, id: generateId() };
+    data.variableExpenses.push(expense);
+    saveData(data);
+    res.json(expense);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/variable-expenses/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const index = data.variableExpenses.findIndex((e) => e.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+    data.variableExpenses[index] = { ...data.variableExpenses[index], ...req.body };
+    saveData(data);
+    res.json(data.variableExpenses[index]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/variable-expenses/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.variableExpenses = data.variableExpenses.filter((e) => e.id !== req.params.id);
+    saveData(data);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Expense Categories
+app.get("/api/expense-categories", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.expenseCategories || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/expense-categories", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const category = { ...req.body, id: generateId() };
+    data.expenseCategories.push(category);
+    saveData(data);
+    res.json(category);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/expense-categories/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    const index = data.expenseCategories.findIndex((c) => c.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    data.expenseCategories[index] = { ...data.expenseCategories[index], ...req.body };
+    saveData(data);
+    res.json(data.expenseCategories[index]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/expense-categories/:id", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.expenseCategories = data.expenseCategories.filter((c) => c.id !== req.params.id);
+    saveData(data);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Organization Settings
+app.get("/api/organization", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.organization || {});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/organization", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.organization = { ...data.organization, ...req.body };
+    saveData(data);
+    res.json(data.organization);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// App Settings
+app.get("/api/app-settings", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    res.json(data.appSettings || {});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/app-settings", requireAuth, (req, res) => {
+  try {
+    const data = loadData();
+    data.appSettings = { ...data.appSettings, ...req.body };
+    saveData(data);
+    res.json(data.appSettings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Авторизация
+app.post("/api/auth/login", (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const auth = loadAuth();
+
+    if (username === auth.username && simpleHash(password) === auth.passwordHash) {
+      const token = generateToken();
+      activeTokens.add(token);
+      res.json({ token, username: auth.username });
+    } else {
+      res.status(401).json({ error: "Invalid credentials" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/auth/verify", (req, res) => {
+  try {
+    const { token } = req.body;
+    if (activeTokens.has(token)) {
+      res.json({ valid: true });
+    } else {
+      res.status(401).json({ valid: false });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+      activeTokens.delete(token);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Защита всех API endpoints (кроме авторизации и health check)
+// Применяем middleware к каждому маршруту отдельно
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+  initDataDir();
+});
+
