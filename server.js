@@ -88,20 +88,36 @@ const activeTokens = new Set();
 // Middleware для проверки авторизации
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
+  
+  console.log(`[requireAuth] ${req.method} ${req.path}`);
+  console.log(`[requireAuth] Authorization header: ${authHeader ? 'present' : 'missing'}`);
+  console.log(`[requireAuth] Active tokens count: ${activeTokens.size}`);
+  
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.log(`[requireAuth] Missing or invalid Authorization header`);
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   const token = authHeader.substring(7);
+  console.log(`[requireAuth] Token: ${token.substring(0, 20)}...`);
+  
   if (!activeTokens.has(token)) {
+    console.log(`[requireAuth] Token not found in active tokens`);
+    console.log(`[requireAuth] Available tokens:`, Array.from(activeTokens).map(t => t.substring(0, 20) + '...'));
     return res.status(401).json({ error: "Invalid token" });
   }
 
+  console.log(`[requireAuth] Token validated successfully`);
   next();
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: true, // Разрешаем все источники
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization']
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -168,9 +184,12 @@ function generateId() {
 // Получить все данные
 app.get("/api/data", requireAuth, (req, res) => {
   try {
+    console.log(`[GET /api/data] Loading data...`);
     const data = loadData();
+    console.log(`[GET /api/data] Data loaded successfully, clients: ${data.clients?.length || 0}, employees: ${data.employees?.length || 0}`);
     res.json(data);
   } catch (error) {
+    console.error(`[GET /api/data] Error:`, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -537,6 +556,8 @@ app.post("/api/auth/login", (req, res) => {
       const token = generateToken();
       activeTokens.add(token);
       console.log(`Login successful for user: ${username}`);
+      console.log(`Token generated: ${token.substring(0, 30)}...`);
+      console.log(`Total active tokens: ${activeTokens.size}`);
       res.json({ token, username: auth.username });
     } else {
       console.log(`Login failed: Invalid credentials for user: ${username}`);
@@ -551,12 +572,18 @@ app.post("/api/auth/login", (req, res) => {
 app.post("/api/auth/verify", (req, res) => {
   try {
     const { token } = req.body;
+    console.log(`[verify] Token verification request: ${token ? token.substring(0, 30) + '...' : 'missing'}`);
+    console.log(`[verify] Active tokens count: ${activeTokens.size}`);
+    
     if (activeTokens.has(token)) {
+      console.log(`[verify] Token is valid`);
       res.json({ valid: true });
     } else {
+      console.log(`[verify] Token is invalid or expired`);
       res.status(401).json({ valid: false });
     }
   } catch (error) {
+    console.error(`[verify] Error:`, error);
     res.status(500).json({ error: error.message });
   }
 });
