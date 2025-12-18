@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 443;
 const DATA_DIR = join(__dirname, "data");
 const DATA_FILE = join(DATA_DIR, "data.json");
 const AUTH_FILE = join(DATA_DIR, "auth.json");
