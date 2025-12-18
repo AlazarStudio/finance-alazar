@@ -11,6 +11,8 @@ npm install
 
 ## Запуск
 
+### HTTP (для разработки)
+
 ```bash
 npm start
 ```
@@ -22,6 +24,22 @@ npm run dev
 ```
 
 Сервер запустится на `http://localhost:3000`
+
+### HTTPS (для продакшена)
+
+1. Поместите SSL сертификаты в папку `server/ssl/`:
+   - `private.key` - приватный ключ
+   - `certificate.crt` - сертификат
+   - `ca_bundle.crt` - CA bundle (опционально)
+
+2. Запустите сервер:
+```bash
+npm start
+```
+
+Сервер автоматически определит наличие сертификатов и запустится через HTTPS.
+
+Подробные инструкции по настройке SSL см. в [SSL_README.md](./SSL_README.md)
 
 ## API Endpoints
 
@@ -70,6 +88,13 @@ npm run dev
 - `PUT /api/organization` - Обновить настройки организации
 - `GET /api/app-settings` - Настройки приложения
 - `PUT /api/app-settings` - Обновить настройки приложения
+
+### Авторизация
+- `POST /api/auth/login` - Вход в систему (требует `username` и `password`)
+- `POST /api/auth/verify` - Проверка токена
+- `POST /api/auth/logout` - Выход из системы
+
+**Важно**: Все API endpoints (кроме `/api/auth/*` и `/api/health`) требуют авторизации через Bearer токен в заголовке `Authorization`.
 
 ## Хранение данных
 

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import https from "https";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -9,10 +10,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const DATA_DIR = join(__dirname, "data");
 const DATA_FILE = join(DATA_DIR, "data.json");
 const AUTH_FILE = join(DATA_DIR, "auth.json");
+
+// Пути к SSL сертификатам (можно задать через переменные окружения)
+const SSL_DIR = process.env.SSL_DIR || join(__dirname, "ssl");
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || join(SSL_DIR, "private.key");
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || join(SSL_DIR, "certificate.crt");
+const SSL_CA_PATH = process.env.SSL_CA_PATH || join(SSL_DIR, "ca_bundle.crt");
 
 // Простая функция для хеширования пароля (для продакшена лучше использовать bcrypt)
 function simpleHash(str) {
@@ -553,8 +560,41 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  initDataDir();
-});
+// Инициализация директории данных
+initDataDir();
+
+// Запуск сервера с HTTPS
+try {
+  // Проверяем наличие SSL сертификатов
+  if (existsSync(SSL_KEY_PATH) && existsSync(SSL_CERT_PATH)) {
+    const httpsOptions = {
+      key: readFileSync(SSL_KEY_PATH),
+      cert: readFileSync(SSL_CERT_PATH),
+    };
+
+    // Добавляем CA bundle если есть
+    if (existsSync(SSL_CA_PATH)) {
+      httpsOptions.ca = readFileSync(SSL_CA_PATH);
+    }
+
+    const httpsServer = https.createServer(httpsOptions, app);
+    
+    httpsServer.listen(PORT, () => {
+      console.log(`HTTPS Server is running on https://0.0.0.0:${PORT}`);
+      console.log(`SSL certificates loaded from: ${SSL_DIR}`);
+    });
+  } else {
+    // Если сертификатов нет, запускаем HTTP (для разработки)
+    console.warn(`⚠️  SSL certificates not found at ${SSL_KEY_PATH} and ${SSL_CERT_PATH}`);
+    console.warn(`⚠️  Starting HTTP server (not recommended for production)`);
+    console.warn(`⚠️  To enable HTTPS, place your SSL certificates in the ssl/ directory`);
+    
+    app.listen(PORT, () => {
+      console.log(`HTTP Server is running on http://0.0.0.0:${PORT}`);
+    });
+  }
+} catch (error) {
+  console.error("Error starting server:", error);
+  process.exit(1);
+}
 
