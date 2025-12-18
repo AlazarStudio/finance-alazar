@@ -677,6 +677,7 @@ try {
     const httpsServer = https.createServer(httpsOptions, app);
     
     httpsServer.listen(PORT, () => {
+      console.log(`HTTP Server is running on https://finance.demoalazar.ru`);
     });
   } else {
     // Если сертификатов нет, запускаем HTTP (для разработки)
