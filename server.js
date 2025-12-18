@@ -115,9 +115,14 @@ function saveTokens() {
     initDataDir();
     const tokensData = { tokens: Array.from(activeTokens) };
     writeFileSync(TOKENS_FILE, JSON.stringify(tokensData, null, 2), "utf-8");
-    console.log(`Saved ${activeTokens.size} tokens to file`);
+    console.log(`[saveTokens] Saved ${activeTokens.size} tokens to file`);
+    // Проверяем, что токены действительно сохранены
+    if (existsSync(TOKENS_FILE)) {
+      const savedData = JSON.parse(readFileSync(TOKENS_FILE, "utf-8"));
+      console.log(`[saveTokens] Verified: ${savedData.tokens.length} tokens in file`);
+    }
   } catch (error) {
-    console.error("Error saving tokens:", error);
+    console.error("[saveTokens] Error saving tokens:", error);
   }
 }
 
@@ -129,7 +134,7 @@ loadTokens();
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   
-  console.log(`[requireAuth] ${req.method} ${req.path}`);
+  console.log(`\n[requireAuth] ${req.method} ${req.path} at ${new Date().toISOString()}`);
   console.log(`[requireAuth] Authorization header: ${authHeader ? 'present' : 'missing'}`);
   console.log(`[requireAuth] Active tokens count: ${activeTokens.size}`);
   
@@ -140,14 +145,35 @@ function requireAuth(req, res, next) {
 
   const token = authHeader.substring(7);
   console.log(`[requireAuth] Token: ${token.substring(0, 20)}...`);
+  console.log(`[requireAuth] Token exists in Set: ${activeTokens.has(token)}`);
   
   if (!activeTokens.has(token)) {
-    console.log(`[requireAuth] Token not found in active tokens`);
-    console.log(`[requireAuth] Available tokens:`, Array.from(activeTokens).map(t => t.substring(0, 20) + '...'));
-    return res.status(401).json({ error: "Invalid token" });
+    console.log(`[requireAuth] ❌ Token not found in active tokens`);
+    console.log(`[requireAuth] Available tokens (first 3):`, Array.from(activeTokens).slice(0, 3).map(t => t.substring(0, 20) + '...'));
+    
+    // Проверяем, может быть токен в файле, но не загружен в память
+    try {
+      if (existsSync(TOKENS_FILE)) {
+        const fileData = JSON.parse(readFileSync(TOKENS_FILE, "utf-8"));
+        const tokenInFile = fileData.tokens.includes(token);
+        console.log(`[requireAuth] Token in file: ${tokenInFile}`);
+        if (tokenInFile && !activeTokens.has(token)) {
+          console.log(`[requireAuth] ⚠️ Token found in file but not in memory! Reloading...`);
+          activeTokens.add(token);
+          console.log(`[requireAuth] Token reloaded, retrying validation...`);
+        }
+      }
+    } catch (error) {
+      console.error(`[requireAuth] Error checking token file:`, error);
+    }
+    
+    // Повторная проверка после возможной перезагрузки
+    if (!activeTokens.has(token)) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
   }
 
-  console.log(`[requireAuth] Token validated successfully`);
+  console.log(`[requireAuth] ✅ Token validated successfully`);
   next();
 }
 
@@ -608,7 +634,12 @@ app.post("/api/auth/login", (req, res) => {
       console.log(`Login successful for user: ${username}`);
       console.log(`Token generated: ${token.substring(0, 30)}...`);
       console.log(`Total active tokens: ${activeTokens.size}`);
-      res.json({ token, username: auth.username });
+      console.log(`Token added to activeTokens: ${activeTokens.has(token)}`);
+      
+      // Убеждаемся, что токен точно сохранен перед отправкой ответа
+      const response = { token, username: auth.username };
+      console.log(`Sending login response with token`);
+      res.json(response);
     } else {
       console.log(`Login failed: Invalid credentials for user: ${username}`);
       res.status(401).json({ error: "Invalid credentials" });
