@@ -16,10 +16,11 @@ const DATA_FILE = join(DATA_DIR, "data.json");
 const AUTH_FILE = join(DATA_DIR, "auth.json");
 
 // Пути к SSL сертификатам (можно задать через переменные окружения)
-const SSL_DIR = process.env.SSL_DIR || join(__dirname, "ssl");
-const SSL_KEY_PATH = process.env.SSL_KEY_PATH || join(SSL_DIR, "private.key");
-const SSL_CERT_PATH = process.env.SSL_CERT_PATH || join(SSL_DIR, "certificate.crt");
-const SSL_CA_PATH = process.env.SSL_CA_PATH || join(SSL_DIR, "ca_bundle.crt");
+// По умолчанию используем Let's Encrypt сертификаты
+const SSL_DIR = process.env.SSL_DIR || "/etc/letsencrypt/live/backendfinance.demoalazar.ru";
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || join(SSL_DIR, "privkey.pem");
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || join(SSL_DIR, "fullchain.pem");
+const SSL_CA_PATH = process.env.SSL_CA_PATH || join(SSL_DIR, "chain.pem");
 
 // Простая функция для хеширования пароля (для продакшена лучше использовать bcrypt)
 function simpleHash(str) {
@@ -587,7 +588,7 @@ try {
     // Если сертификатов нет, запускаем HTTP (для разработки)
     console.warn(`⚠️  SSL certificates not found at ${SSL_KEY_PATH} and ${SSL_CERT_PATH}`);
     console.warn(`⚠️  Starting HTTP server (not recommended for production)`);
-    console.warn(`⚠️  To enable HTTPS, place your SSL certificates in the ssl/ directory`);
+    console.warn(`⚠️  To enable HTTPS, ensure SSL certificates are available at ${SSL_DIR}`);
     
     app.listen(PORT, () => {
       console.log(`HTTP Server is running on http://0.0.0.0:${PORT}`);
